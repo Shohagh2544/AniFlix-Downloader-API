@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -33,6 +34,13 @@ fun main() {
     embeddedServer(Netty, host = "0.0.0.0", port = port) {
         install(ContentNegotiation) {
             json()
+        }
+
+        install(CORS) {
+            anyHost()
+            allowMethod(HttpMethod.Post)
+            allowMethod(HttpMethod.Options)
+            allowHeader(HttpHeaders.ContentType)
         }
 
         routing {
@@ -84,7 +92,7 @@ fun main() {
                 if (uri?.scheme != "https" || !allowedHost) {
                     call.respond(
                         HttpStatusCode.BadRequest,
-                        ErrorResponse("Only supported Abyss video URLs are allowed")
+                        ErrorResponse("Unsupported Abyss video URL")
                     )
                     return@post
                 }
@@ -94,7 +102,7 @@ fun main() {
                 val log = File("/tmp/$id.log")
 
                 try {
-                    val result = withContext(Dispatchers.IO) {
+                    val success = withContext(Dispatchers.IO) {
                         val process = ProcessBuilder(
                             "java",
                             "-jar",
@@ -110,19 +118,22 @@ fun main() {
                             .redirectOutput(log)
                             .start()
 
-                        val finished = process.waitFor(10, TimeUnit.MINUTES)
+                        val finished = process.waitFor(
+                            10,
+                            TimeUnit.MINUTES
+                        )
 
                         if (!finished) {
                             process.destroyForcibly()
-                            return@withContext false
+                            false
+                        } else {
+                            process.exitValue() == 0 &&
+                                output.exists() &&
+                                output.length() > 0
                         }
-
-                        process.exitValue() == 0 &&
-                            output.exists() &&
-                            output.length() > 0
                     }
 
-                    if (!result) {
+                    if (!success) {
                         call.respond(
                             HttpStatusCode.InternalServerError,
                             ErrorResponse("Download failed or timed out")
@@ -140,9 +151,10 @@ fun main() {
                 } catch (e: Exception) {
                     call.respond(
                         HttpStatusCode.InternalServerError,
-                        ErrorResponse("Unable to download this video")
+                        ErrorResponse("Unable to download video")
                     )
                 } finally {
+                    output.delete()
                     log.delete()
                 }
             }
