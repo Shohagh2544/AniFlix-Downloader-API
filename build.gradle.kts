@@ -10,6 +10,7 @@ version = "1.0.0"
 repositories { mavenCentral() }
 
 dependencies {
+implementation("io.ktor:ktor-server-cors-jvm:3.1.3")
     implementation("io.ktor:ktor-server-core-jvm:3.1.3")
     implementation("io.ktor:ktor-server-netty-jvm:3.1.3")
     implementation("io.ktor:ktor-server-content-negotiation-jvm:3.1.3")
