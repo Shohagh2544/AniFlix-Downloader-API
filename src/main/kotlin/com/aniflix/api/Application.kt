@@ -38,6 +38,7 @@ fun main() {
 
         install(CORS) {
             anyHost()
+            allowNonSimpleContentTypes = true
             allowMethod(HttpMethod.Post)
             allowMethod(HttpMethod.Options)
             allowHeader(HttpHeaders.ContentType)
